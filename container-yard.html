@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Container Yard View</title>
+<style>
+  :root {
+    --bg: #1a1f2e;
+    --panel: #232a3d;
+    --asphalt: #2d3447;
+    --line: #f5d547;
+    --text: #e6e9f0;
+    --muted: #8a92a6;
+    --import: #3a86ff;
+    --export: #2ec4b6;
+    --empty: #adb5bd;
+    --reefer: #ff006e;
+    --hazmat: #ff9f1c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  h1 { margin: 0; font-size: 22px; font-weight: 600; }
+
+  .stats {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .stats strong { color: var(--text); font-size: 16px; display: block; }
+
+  .yard {
+    background: var(--asphalt);
+    border-radius: 8px;
+    padding: 24px;
+    background-image:
+      repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(245,213,71,0.08) 60px, rgba(245,213,71,0.08) 62px);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 18px;
+    gap: 12px;
+  }
+
+  .row-label {
+    width: 40px;
+    font-weight: 600;
+    color: var(--line);
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .bays {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .bay {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+    background: rgba(0,0,0,0.2);
+    padding: 4px;
+    border-radius: 4px;
+    min-width: 70px;
+  }
+
+  .container {
+    height: 22px;
+    border-radius: 2px;
+    font-size: 10px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .container:hover { transform: scale(1.08); z-index: 1; }
+  .container.empty-slot {
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.15);
+    box-shadow: none;
+    cursor: default;
+  }
+
+  .container.import { background: var(--import); }
+  .container.export { background: var(--export); }
+  .container.empty  { background: var(--empty); color: #333; }
+  .container.reefer { background: var(--reefer); }
+  .container.hazmat { background: var(--hazmat); color: #333; }
+
+  .bay-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: var(--panel);
+    border-radius: 6px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .swatch {
+    width: 16px; height: 16px; border-radius: 3px;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25);
+  }
+
+  .tooltip {
+    position: fixed;
+    background: #000;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 100;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Port Terminal &mdash; Container Yard</h1>
+    <div class="stats">
+      <div><strong id="stat-total">0</strong>Total TEU</div>
+      <div><strong id="stat-import">0</strong>Import</div>
+      <div><strong id="stat-export">0</strong>Export</div>
+      <div><strong id="stat-empty">0</strong>Empty</div>
+    </div>
+  </header>
+
+  <div class="yard" id="yard"></div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch" style="background:var(--import)"></span>Import</div>
+    <div class="legend-item"><span class="swatch" style="background:var(--export)"></span>Export</div>
+    <div class="legend-item"><span class="swatch" style="background:var(--empty)"></span>Empty</div>
+    <div class="legend-item"><span class="swatch" style="background:var(--reefer)"></span>Reefer</div>
+    <div class="legend-item"><span class="swatch" style="background:var(--hazmat)"></span>Hazmat</div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+<script>
+  const ROWS = ['A', 'B', 'C', 'D', 'E'];
+  const BAYS_PER_ROW = 12;
+  const MAX_STACK = 4;
+  const TYPES = [
+    { name: 'import', weight: 35 },
+    { name: 'export', weight: 30 },
+    { name: 'empty',  weight: 20 },
+    { name: 'reefer', weight: 8  },
+    { name: 'hazmat', weight: 7  },
+  ];
+
+  const totalWeight = TYPES.reduce((s, t) => s + t.weight, 0);
+  function pickType() {
+    let r = Math.random() * totalWeight;
+    for (const t of TYPES) { if ((r -= t.weight) <= 0) return t.name; }
+    return 'empty';
+  }
+
+  function makeId(row, bay, tier) {
+    const seq = String(Math.floor(Math.random() * 9000) + 1000);
+    return `${row}${String(bay).padStart(2,'0')}${tier} #${seq}`;
+  }
+
+  const counts = { total: 0, import: 0, export: 0, empty: 0, reefer: 0, hazmat: 0 };
+  const yardEl = document.getElementById('yard');
+
+  ROWS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    rowEl.innerHTML = `<div class="row-label">${row}</div>`;
+    const baysEl = document.createElement('div');
+    baysEl.className = 'bays';
+
+    for (let bay = 1; bay <= BAYS_PER_ROW; bay++) {
+      const bayEl = document.createElement('div');
+      bayEl.className = 'bay';
+      const stackHeight = Math.floor(Math.random() * (MAX_STACK + 1));
+
+      for (let tier = 1; tier <= MAX_STACK; tier++) {
+        const slot = document.createElement('div');
+        if (tier <= stackHeight) {
+          const type = pickType();
+          slot.className = `container ${type}`;
+          const id = makeId(row, bay, tier);
+          slot.textContent = type.charAt(0).toUpperCase();
+          slot.dataset.tip = `${id} | ${type.toUpperCase()} | Tier ${tier}`;
+          counts.total++;
+          counts[type]++;
+        } else {
+          slot.className = 'container empty-slot';
+        }
+        bayEl.appendChild(slot);
+      }
+
+      const label = document.createElement('div');
+      label.className = 'bay-label';
+      label.textContent = String(bay).padStart(2, '0');
+      bayEl.appendChild(label);
+      baysEl.appendChild(bayEl);
+    }
+
+    rowEl.appendChild(baysEl);
+    yardEl.appendChild(rowEl);
+  });
+
+  document.getElementById('stat-total').textContent = counts.total;
+  document.getElementById('stat-import').textContent = counts.import;
+  document.getElementById('stat-export').textContent = counts.export;
+  document.getElementById('stat-empty').textContent = counts.empty;
+
+  const tip = document.getElementById('tooltip');
+  document.addEventListener('mousemove', e => {
+    const t = e.target;
+    if (t.classList.contains('container') && t.dataset.tip) {
+      tip.textContent = t.dataset.tip;
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top = (e.clientY + 12) + 'px';
+      tip.style.opacity = '1';
+    } else {
+      tip.style.opacity = '0';
+    }
+  });
+</script>
+</body>
+</html>

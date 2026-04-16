@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Container Yard View</title>
+<title>Port Terminal</title>
 <style>
   :root {
     --bg: #1a1f2e;
@@ -16,6 +16,8 @@
     --empty: #adb5bd;
     --reefer: #ff006e;
     --hazmat: #ff9f1c;
+    --pick: #ffd60a;
+    --hull: #0d1220;
   }
 
   * { box-sizing: border-box; }
@@ -32,7 +34,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   h1 { margin: 0; font-size: 22px; font-weight: 600; }
@@ -44,6 +46,32 @@
     color: var(--muted);
   }
   .stats strong { color: var(--text); font-size: 16px; display: block; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .tab {
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--line);
+    border-bottom-color: var(--line);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
 
   .yard {
     background: var(--asphalt);
@@ -110,6 +138,10 @@
   .container.empty  { background: var(--empty); color: #333; }
   .container.reefer { background: var(--reefer); }
   .container.hazmat { background: var(--hazmat); color: #333; }
+  .container.pick {
+    outline: 2px solid var(--pick);
+    outline-offset: 1px;
+  }
 
   .bay-label {
     font-size: 10px;
@@ -133,6 +165,11 @@
     width: 16px; height: 16px; border-radius: 3px;
     box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25);
   }
+  .swatch.pick-swatch {
+    background: transparent;
+    outline: 2px solid var(--pick);
+    outline-offset: -2px;
+  }
 
   .tooltip {
     position: fixed;
@@ -147,12 +184,158 @@
     z-index: 100;
     white-space: nowrap;
   }
+
+  /* ---------- Vessel Bay Plan ---------- */
+  .vessel-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    background: var(--panel);
+    border-radius: 6px;
+  }
+  .vessel-controls label { font-size: 13px; color: var(--muted); }
+  .vessel-controls select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .vessel-controls .summary {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .vessel-controls .summary strong { color: var(--pick); }
+
+  .vessel {
+    background: var(--hull);
+    border-radius: 8px;
+    padding: 24px;
+    position: relative;
+    overflow-x: auto;
+  }
+
+  .deck-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 12px 0 6px;
+  }
+
+  .hatch-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+    margin: 6px 0 14px;
+    opacity: 0.4;
+  }
+
+  .tier-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .tier-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tier-label {
+    width: 28px;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .cell {
+    width: 48px;
+    height: 26px;
+    border-radius: 2px;
+    font-size: 10px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .cell:hover { transform: scale(1.1); z-index: 1; }
+  .cell.empty-cell {
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.1);
+    box-shadow: none;
+    cursor: default;
+  }
+  .cell.import { background: var(--import); }
+  .cell.export { background: var(--export); }
+  .cell.empty  { background: var(--empty); color: #333; }
+  .cell.reefer { background: var(--reefer); }
+  .cell.hazmat { background: var(--hazmat); color: #333; }
+  .cell.pick {
+    outline: 2px solid var(--pick);
+    outline-offset: 1px;
+  }
+
+  .row-axis {
+    display: flex;
+    gap: 6px;
+    margin-left: 34px;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .row-axis span {
+    width: 48px;
+    text-align: center;
+  }
+
+  .picks-table {
+    margin-top: 20px;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--panel);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .picks-table th, .picks-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .picks-table th {
+    background: rgba(0,0,0,0.25);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .picks-table tr:last-child td { border-bottom: none; }
+  .picks-table .pod-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(58,134,255,0.2);
+    color: #7ab0ff;
+  }
 </style>
 </head>
 <body>
   <header>
-    <h1>Port Terminal &mdash; Container Yard</h1>
-    <div class="stats">
+    <h1>Port Terminal</h1>
+    <div class="stats" id="stats-bar">
       <div><strong id="stat-total">0</strong>Total TEU</div>
       <div><strong id="stat-import">0</strong>Import</div>
       <div><strong id="stat-export">0</strong>Export</div>
@@ -160,19 +343,79 @@
     </div>
   </header>
 
-  <div class="yard" id="yard"></div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="yard">Container Yard</button>
+    <button class="tab" data-tab="bayplan">Vessel Bay Plan &mdash; Picks</button>
+  </nav>
 
-  <div class="legend">
-    <div class="legend-item"><span class="swatch" style="background:var(--import)"></span>Import</div>
-    <div class="legend-item"><span class="swatch" style="background:var(--export)"></span>Export</div>
-    <div class="legend-item"><span class="swatch" style="background:var(--empty)"></span>Empty</div>
-    <div class="legend-item"><span class="swatch" style="background:var(--reefer)"></span>Reefer</div>
-    <div class="legend-item"><span class="swatch" style="background:var(--hazmat)"></span>Hazmat</div>
-  </div>
+  <!-- ===== Yard Tab ===== -->
+  <section class="panel active" id="panel-yard">
+    <div class="yard" id="yard"></div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background:var(--import)"></span>Import</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--export)"></span>Export</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--empty)"></span>Empty</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--reefer)"></span>Reefer</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--hazmat)"></span>Hazmat</div>
+    </div>
+  </section>
+
+  <!-- ===== Bay Plan Tab ===== -->
+  <section class="panel" id="panel-bayplan">
+    <div class="vessel-controls">
+      <label for="bay-select">Bay</label>
+      <select id="bay-select"></select>
+      <label for="pod-filter">Discharge Port</label>
+      <select id="pod-filter">
+        <option value="all">All</option>
+      </select>
+      <div class="summary">
+        <strong id="pick-count">0</strong> picks in this bay
+      </div>
+    </div>
+
+    <div class="vessel" id="vessel"></div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background:var(--import)"></span>Import</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--export)"></span>Export</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--reefer)"></span>Reefer</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--hazmat)"></span>Hazmat</div>
+      <div class="legend-item"><span class="swatch pick-swatch"></span>Pick (discharge)</div>
+    </div>
+
+    <table class="picks-table" id="picks-table">
+      <thead>
+        <tr>
+          <th>Slot</th>
+          <th>Container</th>
+          <th>Size/Type</th>
+          <th>Weight (t)</th>
+          <th>POD</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
 
   <div class="tooltip" id="tooltip"></div>
 
 <script>
+  /* ========= Tabs ========= */
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      document.getElementById('stats-bar').style.visibility =
+        btn.dataset.tab === 'yard' ? 'visible' : 'hidden';
+    });
+  });
+
+  /* ========= Container Yard ========= */
   const ROWS = ['A', 'B', 'C', 'D', 'E'];
   const BAYS_PER_ROW = 12;
   const MAX_STACK = 4;
@@ -243,10 +486,161 @@
   document.getElementById('stat-export').textContent = counts.export;
   document.getElementById('stat-empty').textContent = counts.empty;
 
+  /* ========= Vessel Bay Plan =========
+     Convention used here:
+     - Bays: odd = 20' slots, numbered 01,03,05...; we show a handful.
+     - Rows: port side even (02,04,06), 00 center, starboard odd (01,03,05).
+     - Tiers: below deck start at 02,04,06,08; on-deck start at 82,84,86,88.
+     Replace BAYS_DATA below with your spreadsheet rows.
+  ============================================= */
+
+  const VESSEL_ROWS = ['06','04','02','00','01','03','05'];
+  const TIERS_HOLD = ['08','06','04','02'];
+  const TIERS_DECK = ['88','86','84','82'];
+  const PODS = ['LAX','OAK','SEA','YVR','MEX'];
+  const TYPES_V = ['import','export','reefer','hazmat'];
+
+  function randChoice(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function containerNo() {
+    const pref = randChoice(['MSCU','MAEU','HLXU','ONEU','CMAU']);
+    return `${pref}${Math.floor(1000000 + Math.random()*8999999)}`;
+  }
+
+  // Generate demo data for bays 01..21 (odd)
+  const BAYS = [];
+  for (let b = 1; b <= 21; b += 2) {
+    const bay = String(b).padStart(2,'0');
+    const slots = [];
+    const fillRate = 0.55 + Math.random() * 0.3;
+    [...TIERS_HOLD, ...TIERS_DECK].forEach(tier => {
+      VESSEL_ROWS.forEach(row => {
+        if (Math.random() < fillRate) {
+          const type = Math.random() < 0.6 ? 'import' :
+                       Math.random() < 0.8 ? 'export' :
+                       Math.random() < 0.5 ? 'reefer' : 'hazmat';
+          const isPick = type === 'import' && Math.random() < 0.35;
+          slots.push({
+            bay, row, tier,
+            slot: `${bay}${row}${tier}`,
+            container: containerNo(),
+            size: Math.random() < 0.6 ? "20'GP" : "40'HC",
+            weight: (8 + Math.random()*22).toFixed(1),
+            pod: randChoice(PODS),
+            type,
+            pick: isPick,
+          });
+        }
+      });
+    });
+    BAYS.push({ bay, slots });
+  }
+
+  const baySelect = document.getElementById('bay-select');
+  BAYS.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.bay;
+    o.textContent = `Bay ${b.bay}`;
+    baySelect.appendChild(o);
+  });
+
+  const podFilter = document.getElementById('pod-filter');
+  PODS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    podFilter.appendChild(o);
+  });
+
+  function renderBay(bayNo, podFilterVal) {
+    const bay = BAYS.find(b => b.bay === bayNo);
+    const vessel = document.getElementById('vessel');
+    vessel.innerHTML = '';
+
+    const makeGrid = (tiers, label) => {
+      const wrap = document.createElement('div');
+      const lbl = document.createElement('div');
+      lbl.className = 'deck-label';
+      lbl.textContent = label;
+      wrap.appendChild(lbl);
+
+      const grid = document.createElement('div');
+      grid.className = 'tier-grid';
+
+      tiers.forEach(tier => {
+        const tr = document.createElement('div');
+        tr.className = 'tier-row';
+        const lab = document.createElement('div');
+        lab.className = 'tier-label';
+        lab.textContent = tier;
+        tr.appendChild(lab);
+
+        VESSEL_ROWS.forEach(row => {
+          const slot = bay.slots.find(s => s.tier === tier && s.row === row);
+          const cell = document.createElement('div');
+          if (slot) {
+            const dimmed = podFilterVal !== 'all' && slot.pod !== podFilterVal;
+            cell.className = `cell ${slot.type}${slot.pick ? ' pick' : ''}`;
+            cell.style.opacity = dimmed ? '0.25' : '1';
+            cell.textContent = slot.type.charAt(0).toUpperCase();
+            cell.dataset.tip = `${slot.slot} | ${slot.container} | ${slot.size} | ${slot.weight}t | POD ${slot.pod}${slot.pick ? ' | PICK' : ''}`;
+          } else {
+            cell.className = 'cell empty-cell';
+          }
+          tr.appendChild(cell);
+        });
+        grid.appendChild(tr);
+      });
+
+      const axis = document.createElement('div');
+      axis.className = 'row-axis';
+      VESSEL_ROWS.forEach(r => {
+        const s = document.createElement('span');
+        s.textContent = r;
+        axis.appendChild(s);
+      });
+      wrap.appendChild(grid);
+      wrap.appendChild(axis);
+      return wrap;
+    };
+
+    vessel.appendChild(makeGrid(TIERS_DECK, 'On Deck'));
+    const hatch = document.createElement('div');
+    hatch.className = 'hatch-line';
+    vessel.appendChild(hatch);
+    vessel.appendChild(makeGrid(TIERS_HOLD, 'Below Deck (Hold)'));
+
+    // Picks summary and table
+    const picks = bay.slots.filter(s => s.pick &&
+      (podFilterVal === 'all' || s.pod === podFilterVal));
+    document.getElementById('pick-count').textContent = picks.length;
+
+    const tbody = document.querySelector('#picks-table tbody');
+    tbody.innerHTML = '';
+    picks.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.slot}</td>
+        <td>${p.container}</td>
+        <td>${p.size}</td>
+        <td>${p.weight}</td>
+        <td><span class="pod-badge">${p.pod}</span></td>
+        <td>Pending pick</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    if (!picks.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No picks in this bay</td></tr>`;
+    }
+  }
+
+  baySelect.addEventListener('change', () => renderBay(baySelect.value, podFilter.value));
+  podFilter.addEventListener('change', () => renderBay(baySelect.value, podFilter.value));
+  renderBay(BAYS[0].bay, 'all');
+
+  /* ========= Tooltip (shared) ========= */
   const tip = document.getElementById('tooltip');
   document.addEventListener('mousemove', e => {
     const t = e.target;
-    if (t.classList.contains('container') && t.dataset.tip) {
+    if ((t.classList.contains('container') || t.classList.contains('cell')) && t.dataset.tip) {
       tip.textContent = t.dataset.tip;
       tip.style.left = (e.clientX + 12) + 'px';
       tip.style.top = (e.clientY + 12) + 'px';
